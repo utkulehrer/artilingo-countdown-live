@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Artilingo Countdown — Multi Counter (Scrollable)</title>
+  <style>
+    :root{
+      --bg1:#0b0f10;
+      --bg2:#11181a;
+      --glass: rgba(255,255,255,.06);
+      --fg:#e8f1ee;
+      --muted:#a7b3b0;
+      --accent:#009d6c;
+      --danger:#e83e3e;
+    }
+    html,body{height:100%}
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", Inter, "Segoe UI Variable", "Source Sans 3", sans-serif;
+      color:var(--fg);
+      background: radial-gradient(1200px 600px at 10% -10%, #0f2b2a 0%, transparent 60%),
+                  radial-gradient(1000px 800px at 110% 20%, #112233 0%, transparent 55%),
+                  linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
+      display:flex;
+      align-items:flex-start;   /* was center */
+      justify-content:center;
+      min-height:100vh;
+      overflow:auto;            /* was hidden */
+      scroll-behavior:smooth;
+    }
+    .wrap{
+      width:min(1140px, 96vw);
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:18px;
+      padding:24px;
+      margin:24px 0;
+    }
+    header{
+      position:sticky; top:0; z-index:5;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      background: linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.15));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      padding:12px 14px;
+      backdrop-filter: blur(8px);
+    }
+    .topic{
+      font-weight:700;
+      letter-spacing:.4px;
+      font-size: clamp(20px, 4vw, 40px);
+      line-height:1.1;
+    }
+    .meta{ color:var(--muted); font-size:14px; }
+
+    .counter{
+      display:flex;
+      gap:16px;
+      align-items:stretch;
+      justify-content:center;
+      margin:0 auto;
+      width:min(880px, 100%);
+    }
+    .cell{
+      background: var(--glass);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:16px;
+      padding:22px 20px;
+      backdrop-filter: blur(10px);
+      min-width: 120px;
+      text-align:center;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .cell .num{ font-size: clamp(34px, 6vw, 64px); font-weight:800; line-height:1; }
+    .cell .lab{ margin-top:6px; font-size: 12px; letter-spacing:.2px; color: var(--muted); text-transform: uppercase; }
+
+    /* MULTI-CARD PANEL */
+    .toolbar{ display:flex; gap:10px; justify-content:flex-end; }
+    .panel{
+      display:grid; gap:14px;
+      max-height: calc(100vh - 280px); /* header + counter alanından sonra kalan */
+      overflow:auto;                    /* SCROLL ENABLED */
+      padding-right:8px;                /* scrollbar çarpmayı azaltır */
+    }
+
+    /* (Opsiyonel) scrollbar stili */
+    .panel::-webkit-scrollbar{ width:10px }
+    .panel::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.15); border-radius:10px }
+    .panel::-webkit-scrollbar-track{ background: rgba(255,255,255,.06) }
+
+    .card{
+      background: var(--glass);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      padding:14px;
+      display:grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap:10px;
+    }
+    .card .row{ display:flex; flex-direction:column; gap:6px; }
+    .card .row.span-2{ grid-column: span 2; }
+    .card .row.span-3{ grid-column: span 3; }
+    .card .row.span-6{ grid-column: 1 / -1; }
+    label{font-size:12px; color:var(--muted)}
+    input[type="text"], input[type="datetime-local"], textarea{
+      width:100%;
+      background: rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:10px;
+      color:var(--fg);
+      padding:10px 12px;
+      outline:none;
+    }
+    textarea{ resize:vertical; min-height:84px; }
+    .actions{ grid-column: 1 / -1; display:flex; gap:8px; align-items:center; justify-content:flex-end; flex-wrap:wrap; }
+    button{ background:var(--accent); color:white; border:none; border-radius:12px; padding:10px 14px; font-weight:700; cursor:pointer; }
+    .btn-ghost{ background:transparent; border:1px solid rgba(255,255,255,.2); color:var(--fg) }
+    .danger{ background:var(--danger) }
+    .idpill{ font-size:12px; color:var(--muted) }
+
+    .sharebar{ display:flex; gap:10px; align-items:center; justify-content:flex-start; flex-wrap:wrap; }
+    .shareurl{ font-size:13px; color:var(--muted) }
+
+    #overlay{
+      position:fixed;
+      inset:0;
+      background:linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,.85));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:16px;
+      z-index: 20;
+    }
+    #overlay .inner{
+      background: rgba(0,0,0,.4);
+      border:1px solid rgba(255,255,255,.15);
+      border-radius:16px;
+      width:min(560px, 92vw);
+      padding:20px;
+      text-align:center;
+      backdrop-filter: blur(8px);
+    }
+    #overlay h2{ margin:8px 0 14px 0 }
+    .hide{ display:none !important }
+
+    /* LIVE MODE hides entire panel */
+    body.live .panel,
+    body.live .toolbar { display:none !important; }
+
+    @media (max-width:880px){
+      .panel{ max-height: calc(100vh - 300px); }
+      .card{ grid-template-columns: repeat(2, 1fr); }
+      .card .row.span-2, .card .row.span-3{ grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="topic" id="topicDisplay">Geri Sayım</div>
+      <div class="meta" id="targetDisplay">Hedef: —</div>
+    </header>
+
+    <section class="counter" aria-live="polite" aria-atomic="true">
+      <div class="cell"><div class="num" id="dVal">0</div><div class="lab">Gün</div></div>
+      <div class="cell"><div class="num" id="hVal">00</div><div class="lab">Saat</div></div>
+      <div class="cell"><div class="num" id="mVal">00</div><div class="lab">Dakika</div></div>
+      <div class="cell"><div class="num" id="sVal">00</div><div class="lab">Saniye</div></div>
+    </section>
+
+    <div class="toolbar">
+      <button id="addBtn" class="btn-ghost">+ Sayaç Ekle</button>
+    </div>
+
+    <section class="panel" id="panel">
+      <!-- Cards will be injected -->
+    </section>
+  </div>
+
+  <div id="overlay" class="hide" role="dialog" aria-modal="true" aria-labelledby="ovtitle">
+    <div class="inner">
+      <h2 id="ovtitle">Arka plan müziğini başlat?</h2>
+      <p style="color:var(--muted);margin:.5rem 0 1rem 0">Tarayıcılar otomatik sesi engellediği için bir tık gerekli.</p>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button id="startBtn">Başlat</button>
+        <button id="muteBtn" class="btn-ghost">Sessiz Başlat</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="player" style="width:1px;height:1px;overflow:hidden" aria-hidden="true"></div>
+
+  <script>
+    let TARGET = null;
+    let VIDEO_IDS = [];
+    let player = null;
+    let playerReady = false;
+    let timer = null;
+    let _wantPlay = null; // 'muted' | 'unmuted' | null
+
+    const dVal = document.getElementById('dVal');
+    const hVal = document.getElementById('hVal');
+    const mVal = document.getElementById('mVal');
+    const sVal = document.getElementById('sVal');
+    const topicDisplay = document.getElementById('topicDisplay');
+    const targetDisplay = document.getElementById('targetDisplay');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('startBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const panel = document.getElementById('panel');
+    const addBtn = document.getElementById('addBtn');
+
+    const pad2 = (n)=> String(n).padStart(2,'0');
+    const toLocalValue = (d)=> { const tz = d.getTimezoneOffset(); const local = new Date(d.getTime()-tz*60000); return local.toISOString().slice(0,16); };
+    function fmtTarget(d){ try{ return new Intl.DateTimeFormat(undefined,{dateStyle:'full', timeStyle:'short'}).format(d); }catch{ return d.toLocaleString(); } }
+    function updateHeader(){ targetDisplay.textContent = TARGET ? ('Hedef: '+fmtTarget(TARGET)) : 'Hedef: —'; }
+
+    function extractVideoID(item){
+      if(!item) return null;
+      item = item.trim();
+      if (/^[a-zA-Z0-9_-]{11}$/.test(item)) return item;
+      try {
+        const u = new URL(item);
+        if (!/youtu\.?be/.test(u.hostname)) return null;
+        const v = u.searchParams.get('v'); if (v) return v;
+        const parts = u.pathname.split('/').filter(Boolean);
+        if (parts[0] === 'embed' || parts[0] === 'shorts' || parts[0] === 'live') return parts[1];
+        return parts[0];
+      } catch {}
+      return null;
+    }
+    function parsePlaylist(text){
+      return (text||'').split(/\\r?\\n|,|;|\\s+/).map(extractVideoID).filter(Boolean);
+    }
+    function ensureOverlay(){ overlay.classList.remove('hide'); }
+    function hideOverlay(){ overlay.classList.add('hide'); }
+
+    function createOrUpdatePlayer(ids){
+      function initYT(){
+        try{
+          player = new YT.Player('player', {
+            height:'1', width:'1',
+            videoId: ids[0] || '',
+            playerVars: { autoplay: 0, controls: 0, loop: 1, playlist: (ids && ids.length>1)? ids.join(',') : ids[0] || '' },
+            events: {
+              onReady: () => {
+                playerReady = true;
+                try { if (ids?.length) player.cuePlaylist(ids); } catch {}
+                if (_wantPlay) { if (_wantPlay==='muted') player.mute(); try { player.playVideo(); } catch {} }
+              },
+              onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) { try { player.nextVideo(); } catch{} } }
+            }
+          });
+        }catch(err){ console.warn('YT init error', err); }
+      }
+      if (window.YT && window.YT.Player){
+        if (!player) initYT();
+        else { try { player.cuePlaylist(ids); } catch { try { player.loadVideoById(ids[0]); } catch {} } }
+        return;
+      }
+      if (!window._ytApiLoaded){
+        const tag = document.createElement('script'); tag.src='https://www.youtube.com/iframe_api'; document.head.appendChild(tag); window._ytApiLoaded=true;
+      }
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = function(){ prev && prev(); initYT(); }
+      if (player){ try{ player.cuePlaylist(ids); }catch{ try{ player.loadVideoById(ids[0]); }catch{} } }
+    }
+
+    function tick(){
+      if (!TARGET) return;
+      const now = new Date();
+      const diff = TARGET - now;
+      if (diff <= 0){ onComplete(); return; }
+      const sec = Math.floor(diff/1000);
+      const d = Math.floor(sec/86400);
+      const h = Math.floor((sec%86400)/3600);
+      const m = Math.floor((sec%3600)/60);
+      const s = sec%60;
+      dVal.textContent = String(d); hVal.textContent = pad2(h); mVal.textContent = pad2(m); sVal.textContent = pad2(s);
+    }
+    function onComplete(){
+      try{ clearInterval(timer); }catch{}
+      document.body.classList.add('done');
+      try{ navigator.vibrate?.([60,40,60]); }catch{}
+      const title = document.querySelector('.card[data-active="1"] input[name="title"]')?.value?.trim() || '';
+      topicDisplay.textContent = (title ? title + ': ' : '') + 'Başlıyor!';
+      targetDisplay.textContent = 'Hedef: şimdi';
+      fadeOutAudio(5000);
+    }
+    function fadeOutAudio(ms){
+      if (!playerReady || !player || typeof player.getVolume !== 'function') return;
+      let vol = Number(player.getVolume() || 100);
+      const steps=30, step=Math.max(16, Math.floor(ms/steps)); let i=0;
+      const iv = setInterval(()=>{
+        i++; const ratio = 1 - (i/steps);
+        vol = Math.max(0, Math.round(100*ratio));
+        try{ player.setVolume(vol); }catch{}
+        if (i>=steps){ clearInterval(iv); try{ player.stopVideo(); }catch{} }
+      }, step);
+    }
+
+    let counterSeq = 1;
+    function newCard(preset){
+      const id = preset?.id || String(counterSeq++);
+      const html = document.createElement('div');
+      html.className = 'card';
+      html.dataset.id = id;
+      html.innerHTML = `
+        <div class="row"><label>Sayaç ID</label><input type="text" name="id" value="${id}" placeholder="örn: ders-01" /></div>
+        <div class="row span-2"><label>Başlık</label><input type="text" name="title" placeholder="Örn: Demo Ders" value="${preset?.title||''}"/></div>
+        <div class="row span-2"><label>Hedef (yerel)</label><input type="datetime-local" name="dt" value="${preset?.t ? toLocalValue(new Date(preset.t)) : ''}" /></div>
+        <div class="row span-6"><label>Playlist (YouTube ID/URL — satır/virgül/boşlukla ayırın)</label><textarea name="pl" placeholder="ID veya URL girin">${preset?.pl || ''}</textarea></div>
+        <div class="actions">
+          <span class="idpill">ID: <b>${id}</b></span>
+          <button data-act="preview" class="btn-ghost">Önizle</button>
+          <button data-act="share">Paylaşım Linki</button>
+          <button data-act="save" class="btn-ghost">Kaydet (Local)</button>
+          <button data-act="remove" class="danger">Sil</button>
+        </div>
+        <div class="sharebar hide">
+          <span class="shareurl"></span>
+          <button data-act="copy" class="btn-ghost">Kopyala</button>
+        </div>
+      `;
+      panel.appendChild(html);
+
+      html.addEventListener('click', (e)=>{
+        const btn = e.target.closest('button'); if (!btn) return;
+        const act = btn.dataset.act;
+        const idInput = html.querySelector('input[name="id"]');
+        const titleInput = html.querySelector('input[name="title"]');
+        const dtInput = html.querySelector('input[name="dt"]');
+        const plInput = html.querySelector('textarea[name="pl"]');
+        const sharebar = html.querySelector('.sharebar');
+        const shareurl = html.querySelector('.shareurl');
+
+        if (act === 'remove'){
+          if (confirm('Bu sayacı silmek istiyor musunuz?')){
+            try{ localStorage.removeItem('ac:'+idInput.value.trim()); }catch{}
+            html.remove();
+          }
+          return;
+        }
+        if (act === 'save'){
+          const data = { id: idInput.value.trim(), title: titleInput.value.trim(), t: dtInput.value, pl: plInput.value };
+          try{ localStorage.setItem('ac:'+data.id, JSON.stringify(data)); alert('Yerel olarak kaydedildi.'); }catch{}
+          return;
+        }
+        if (act === 'preview'){
+          document.querySelectorAll('.card').forEach(c=>c.dataset.active='0');
+          html.dataset.active='1';
+          const raw = dtInput.value;
+          if (raw){ const d = new Date(raw); if (!isNaN(+d)) TARGET = new Date(d.getTime()); }
+          topicDisplay.textContent = titleInput.value.trim() || 'Geri Sayım';
+          updateHeader();
+          VIDEO_IDS = parsePlaylist(plInput.value);
+          if (VIDEO_IDS.length){ createOrUpdatePlayer(VIDEO_IDS); ensureOverlay(); }
+          return;
+        }
+        if (act === 'share'){
+          if (!dtInput.value){ alert('Lütfen hedef tarih/saat belirleyin.'); return; }
+          const d = new Date(dtInput.value);
+          if (isNaN(+d)){ alert('Geçersiz tarih.'); return; }
+          const p = new URLSearchParams();
+          p.set('id', idInput.value.trim() || id);
+          p.set('t', new Date(d.getTime()).toISOString());
+          const title = titleInput.value.trim(); if (title) p.set('title', title);
+          const pl = plInput.value.trim(); if (pl) p.set('pl', pl);
+          p.set('mode','live');
+          const url = `${location.origin}${location.pathname}?${p.toString()}`;
+          shareurl.textContent = url; sharebar.classList.remove('hide');
+          return;
+        }
+        if (act === 'copy'){
+          const url = shareurl.textContent.trim();
+          if (!url) return;
+          navigator.clipboard.writeText(url).then(()=>{
+            btn.textContent = 'Kopyalandı ✓';
+            setTimeout(()=> btn.textContent='Kopyala', 1200);
+          }).catch(()=>{});
+          return;
+        }
+      });
+    }
+
+    function restoreCards(){
+      const keys = Object.keys(localStorage).filter(k=>k.startsWith('ac:'));
+      if (keys.length===0){ newCard(); return; }
+      keys.forEach(k=>{
+        try{ const data = JSON.parse(localStorage.getItem(k)); newCard(data); }
+        catch{ newCard(); }
+      });
+    }
+
+    addBtn.addEventListener('click', ()=> newCard());
+
+    (function hydrate(){
+      const q = new URLSearchParams(location.search);
+      const mode = q.get('mode');
+      if (mode === 'live'){
+        document.body.classList.add('live');
+        const t = q.get('t'); if (t){ const d = new Date(t); if (!isNaN(+d)){ TARGET = d; } }
+        const title = q.get('title') || 'Geri Sayım';
+        topicDisplay.textContent = title;
+        updateHeader();
+        const pl = q.get('pl');
+        if (pl){ VIDEO_IDS = parsePlaylist(pl); if (VIDEO_IDS.length){ createOrUpdatePlayer(VIDEO_IDS); ensureOverlay(); } }
+      } else {
+        restoreCards();
+      }
+      if (q.get('fs') === '1'){ document.documentElement.requestFullscreen?.().catch(()=>{}); }
+    })();
+
+    startBtn.addEventListener('click', ()=>{ _wantPlay = 'unmuted'; if (playerReady){ try{ player.playVideo(); }catch{} } hideOverlay(); });
+    muteBtn.addEventListener('click', ()=>{ _wantPlay = 'muted'; if (playerReady){ try{ player.mute(); player.playVideo(); }catch{} } hideOverlay(); });
+
+    timer = setInterval(tick, 250);
+    tick();
+  </script>
+</body>
+</html>
